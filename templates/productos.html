@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+{% block title %}📦 Productos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📦 Productos</h1>
+    <div class="header-actions">
+        <a href="/productos/crear" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Producto
+        </a>
+    </div>
+</div>
+
+<!-- BÚSQUEDA -->
+<div class="search-container mb-4">
+    <div class="search-box">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" 
+               id="searchInput" 
+               class="search-input" 
+               placeholder="Buscar productos por nombre o descripción...">
+    </div>
+</div>
+
+<!-- TABLA DE PRODUCTOS -->
+<div class="table-responsive">
+    <table class="table table-hover" id="productsTable">
+        <thead class="table-light">
+            <tr>
+                <th width="80">ID</th>
+                <th>Nombre</th>
+                <th width="120">Stock</th>
+                <th width="140">Stock Mínimo</th>
+                <th width="120">Precio</th>
+                <th width="200" class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if productos and productos|length > 0 %}
+                {% for p in productos %}
+                <tr class="product-row">
+                    <td class="text-muted fw-bold">#{{ p.id }}</td>
+                    
+                    <td>
+                        <div class="product-info">
+                            <strong>{{ p.nombre }}</strong>
+                            {% if p.descripcion %}
+                            <div class="text-muted small mt-1">
+                                {{ p.descripcion[:60] }}{% if p.descripcion|length > 60 %}...{% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    
+                    <td>
+                        {% if p.stock == 0 %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-times-circle"></i> {{ p.stock }}
+                            </span>
+                        {% elif p.stock_bajo() %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-exclamation-triangle"></i> {{ p.stock }}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check-circle"></i> {{ p.stock }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    
+                    <td>{{ p.stock_minimo }}</td>
+                    
+                    <td>
+                        <span class="fw-bold text-success">
+                            ${{ "%.2f"|format(p.precio) }}
+                        </span>
+                    </td>
+                    
+                    <td>
+                        <div class="action-buttons">
+                            <a href="/productos/editar/{{ p.id }}" 
+                               class="btn btn-warning btn-sm" 
+                               title="Editar producto">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            
+                            <button type="button" 
+                                    class="btn btn-danger btn-sm" 
+                                    title="Eliminar producto"
+                                    onclick="confirmarEliminacion({{ p.id }}, '{{ p.nombre|replace("'", "\\'") }}')">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="empty-state">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No hay productos registrados</h4>
+                            <p class="text-muted mb-3">Comienza agregando tu primer producto</p>
+                            <a href="/productos/crear" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Primer Producto
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MENSAJES FLASH (para feedback de operaciones) -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages mt-4">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {% if category == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% elif category == 'error' or category == 'danger' %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% elif category == 'warning' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<style>
+/* ESTILOS GENERALES */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* BÚSQUEDA */
+.search-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.search-box {
+    position: relative;
+    max-width: 500px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 20px 12px 45px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* TABLA MEJORADA */
+.table-responsive {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table {
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.table thead th {
+    padding: 16px;
+    font-weight: 600;
+    border: none;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.table tbody td {
+    padding: 16px;
+    vertical-align: middle;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* BADGES */
+.badge {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bg-success {
+    background-color: #10b981 !important;
+}
+
+.bg-warning {
+    background-color: #f59e0b !important;
+    color: white !important;
+}
+
+.bg-danger {
+    background-color: #ef4444 !important;
+}
+
+/* BOTONES DE ACCIÓN */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.action-buttons .btn-sm {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-warning {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+    border-color: #d97706;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.2);
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    border-color: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    border-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* ESTADO VACÍO */
+.empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.empty-state i {
+    opacity: 0.3;
+}
+
+/* MENSAJES FLASH */
+.flash-messages .alert {
+    border-radius: 8px;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.alert-error, .alert-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.alert-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.alert-info {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.alert i {
+    font-size: 1.2rem;
+}
+
+.btn-close {
+    margin-left: auto;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+    }
+    
+    .header-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .action-buttons .btn-sm {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .table {
+        font-size: 0.9rem;
+    }
+    
+    .table thead {
+        display: none;
+    }
+    
+    .table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .table tbody td {
+        display: block;
+        padding: 0.5rem 0;
+        border: none;
+        text-align: left;
+        position: relative;
+        padding-left: 50%;
+    }
+    
+    .table tbody td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        width: 45%;
+        padding-right: 1rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    
+    /* Añadir data-labels a las celdas */
+    td:nth-child(1):before { content: "ID:"; }
+    td:nth-child(2):before { content: "Nombre:"; }
+    td:nth-child(3):before { content: "Stock:"; }
+    td:nth-child(4):before { content: "Stock Mín:"; }
+    td:nth-child(5):before { content: "Precio:"; }
+    td:nth-child(6):before { content: "Acciones:"; }
+}
+</style>
+
+<script>
+// FILTRADO POR BÚSQUEDA
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const tableRows = document.querySelectorAll('#productsTable tbody tr');
+    
+    function filterProducts() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        tableRows.forEach(row => {
+            // Saltar la fila vacía
+            if (row.querySelector('.empty-state')) return;
+            
+            const productName = row.querySelector('.product-info strong').textContent.toLowerCase();
+            const productDesc = row.querySelector('.product-info .text-muted')?.textContent?.toLowerCase() || '';
+            
+            const matches = productName.includes(searchTerm) || productDesc.includes(searchTerm);
+            row.style.display = matches ? '' : 'none';
+        });
+    }
+    
+    // Filtrar mientras se escribe
+    searchInput.addEventListener('input', filterProducts);
+    
+    // Añadir data-labels para responsive
+    if (window.innerWidth <= 768) {
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 6) {
+                cells[0].setAttribute('data-label', 'ID');
+                cells[1].setAttribute('data-label', 'Nombre');
+                cells[2].setAttribute('data-label', 'Stock');
+                cells[3].setAttribute('data-label', 'Stock Mínimo');
+                cells[4].setAttribute('data-label', 'Precio');
+                cells[5].setAttribute('data-label', 'Acciones');
+            }
+        });
+    }
+});
+
+// CONFIRMAR ELIMINACIÓN
+function confirmarEliminacion(productoId, productoNombre) {
+    if (confirm(`¿Estás seguro de eliminar el producto "${productoNombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        // Crear formulario para eliminar por POST (más seguro)
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/productos/eliminar/${productoId}`;
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// AUTO-CERRAR MENSAJES FLASH DESPUÉS DE 5 SEGUNDOS
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            const closeBtn = alert.querySelector('.btn-close');
+            if (closeBtn) {
+                closeBtn.click();
+            }
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

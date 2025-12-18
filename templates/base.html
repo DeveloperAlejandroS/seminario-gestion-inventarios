@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Sistema de Gestión{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- META TAGS PARA RESPONSIVE Y SEO BÁSICO -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de gestión de inventario y usuarios">
+</head>
+<body>
+
+<!-- =============================== -->
+<!-- BARRA DE NAVEGACIÓN PRINCIPAL -->
+<!-- =============================== -->
+<nav class="navbar">
+    <div class="navbar-brand">
+        <h2>Sistema de Gestión</h2>
+    </div>
+    
+    {% if session.get("user_id") %}
+    <div class="navbar-menu">
+        <ul class="navbar-nav">
+            <!-- DASHBOARD SEGÚN ROL -->
+            {% if session.get("rol") == "admin" %}
+                <li class="nav-item"><a href="/dashboard" class="nav-link">🏠 Dashboard Admin</a></li>
+            {% elif session.get("rol") == "operador" %}
+                <li class="nav-item"><a href="/operador/dashboard" class="nav-link">🏠 Dashboard Operador</a></li>
+            {% endif %}
+            
+            <!-- PRODUCTOS (PARA AMBOS ROLES) -->
+            <li class="nav-item"><a href="/productos" class="nav-link">📦 Productos</a></li>
+            
+            <!-- MENÚS ESPECÍFICOS POR ROL -->
+            {% if session.get("rol") == "admin" %}
+                <li class="nav-item"><a href="/usuarios" class="nav-link">👥 Usuarios</a></li>
+            {% endif %}
+            
+            <!-- USUARIO ACTUAL Y SALIR -->
+            <li class="nav-item user-info">
+                <span class="user-name">
+                    👤 {{ session.get("nombre", "Usuario") }} 
+                    <small>({{ session.get("rol")|title }})</small>
+                </span>
+            </li>
+            <li class="nav-item"><a href="/logout" class="nav-link btn-logout">🚪 Salir</a></li>
+        </ul>
+    </div>
+    {% endif %}
+</nav>
+
+<!-- =============================== -->
+<!-- CONTENIDO PRINCIPAL -->
+<!-- =============================== -->
+<main class="container">
+    <!-- MENSAJES FLASH (PARA FEEDBACK AL USUARIO) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+                {{ message }}
+                <button type="button" class="close" onclick="this.parentElement.style.display='none'">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- CONTENIDO DE CADA PÁGINA -->
+    {% block content %}{% endblock %}
+</main>
+
+<!-- =============================== -->
+<!-- FOOTER OPCIONAL -->
+<!-- =============================== -->
+<!-- POR ESTO: -->
+<footer class="footer">
+    <div class="container">
+        <p>&copy; Sistema de Gestión - Versión 1.0</p>
+    </div>
+</footer>
+
+<!-- =============================== -->
+<!-- SCRIPTS ADICIONALES -->
+<!-- =============================== -->
+<script>
+// FUNCIÓN PARA CERRAR ALERTAS AUTOMÁTICAMENTE
+document.addEventListener('DOMContentLoaded', function() {
+    // Cerrar alerts después de 5 segundos
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            alert.style.opacity = '0';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 500);
+        });
+    }, 5000);
+    
+    // RESALTAR ENLACE ACTIVO
+    var currentPath = window.location.pathname;
+    var navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(function(link) {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

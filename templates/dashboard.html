@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sistema de Gestión{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>📊 Dashboard {% if rol == "admin" %}Administrador{% else %}Operador{% endif %}</h1>
+    <p class="text-muted">Resumen general del sistema - Última actualización: {{ now.strftime('%d/%m/%Y %H:%M') if now else 'Hoy' }}</p>
+</div>
+
+<!-- =========================================== -->
+<!-- TARJETAS DE ESTADÍSTICAS -->
+<!-- =========================================== -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #e0e7ff; color: #6366f1;">
+            📦
+        </div>
+        <div class="stat-content">
+            <h3>{{ total_productos }}</h3>
+            <p>Productos Activos</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #d1fae5; color: #10b981;">
+            ⚠️
+        </div>
+        <div class="stat-content">
+            <h3>{{ stock_bajo|length if stock_bajo else 0 }}</h3>
+            <p>Stock Bajo</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fef3c7; color: #f59e0b;">
+            🔄
+        </div>
+        <div class="stat-content">
+            <h3>{{ ultimos_movimientos|length if ultimos_movimientos else 0 }}</h3>
+            <p>Movimientos Recientes</p>
+        </div>
+    </div>
+    
+    {% if rol == "admin" %}
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fce7f3; color: #db2777;">
+            👥
+        </div>
+        <div class="stat-content">
+            <h3>{{ total_usuarios if total_usuarios else "N/A" }}</h3>
+            <p>Usuarios Activos</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- =========================================== -->
+<!-- PRODUCTOS CON STOCK BAJO -->
+<!-- =========================================== -->
+<div class="dashboard-section">
+    <div class="section-header">
+        <h2>⚠️ Productos con Stock Bajo</h2>
+        <a href="/productos" class="btn btn-small">Ver Todos los Productos</a>
+    </div>
+    
+    {% if stock_bajo %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Stock Actual</th>
+                    <th>Mínimo Requerido</th>
+                    <th>Diferencia</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in stock_bajo %}
+                <tr>
+                    <td>
+                        <strong>{{ p.nombre }}</strong>
+                        {% if p.descripcion %}
+                        <br><small class="text-muted">{{ p.descripcion[:50] }}{% if p.descripcion|length > 50 %}...{% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge {% if p.stock == 0 %}badge-danger{% else %}badge-warning{% endif %}">{{ p.stock }}</span></td>
+                    <td>{{ p.stock_minimo }}</td>
+                    <td>
+                        {% set diferencia = p.stock_minimo - p.stock %}
+                        <span class="text-danger">-{{ diferencia }}</span>
+                    </td>
+                    <td>
+                        {% if p.stock == 0 %}
+                        <span class="badge badge-danger">Agotado</span>
+                        {% else %}
+                        <span class="badge badge-warning">Bajo Stock</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">✅</div>
+        <h3>¡Excelente! Todo bajo control</h3>
+        <p>No hay productos con stock bajo en este momento.</p>
+        <a href="/productos" class="btn">Gestionar Productos</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- =========================================== -->
+<!-- ÚLTIMOS MOVIMIENTOS -->
+<!-- =========================================== -->
+<div class="dashboard-section">
+    <div class="section-header">
+        <h2>📋 Últimos Movimientos</h2>
+        {% if rol == "operador" %}
+        <a href="/operador/movimientos" class="btn btn-small">Ver Historial Completo</a>
+        {% endif %}
+    </div>
+    
+    {% if ultimos_movimientos %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Producto</th>
+                    <th>Usuario</th>
+                    <th>Tipo</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in ultimos_movimientos %}
+                <tr>
+                    <td>
+                        <small>{{ m.fecha.strftime('%d/%m/%Y') if m.fecha is defined and m.fecha else m.fecha }}</small>
+                        <br>
+                        <small class="text-muted">{{ m.fecha.strftime('%H:%M') if m.fecha is defined and m.fecha else '' }}</small>
+                    </td>
+                    <td>{{ m.producto }}</td>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">{{ m.usuario[0] if m.usuario else 'U' }}</div>
+                            {{ m.usuario }}
+                        </div>
+                    </td>
+                    <td>
+                        {% if m.tipo == "entrada" %}
+                        <span class="badge badge-success">Entrada</span>
+                        {% elif m.tipo == "salida" %}
+                        <span class="badge badge-danger">Salida</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ m.tipo|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="movement-icon">
+                            {% if m.tipo == "entrada" %}📥
+                            {% elif m.tipo == "salida" %}📤
+                            {% else %}🔄{% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>Sin actividad reciente</h3>
+        <p>No hay movimientos registrados en las últimas horas.</p>
+        {% if rol == "operador" %}
+        <a href="/operador/movimiento" class="btn">Registrar Primer Movimiento</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- =========================================== -->
+<!-- ACCIONES RÁPIDAS -->
+<!-- =========================================== -->
+<div class="dashboard-section">
+    <h2>🚀 Acciones Rápidas</h2>
+    <div class="quick-actions">
+        <a href="/productos/crear" class="quick-action">
+            <div class="quick-icon">➕</div>
+            <span>Nuevo Producto</span>
+        </a>
+        
+        {% if rol == "admin" %}
+        <a href="/usuarios" class="quick-action">
+            <div class="quick-icon">👥</div>
+            <span>Gestionar Usuarios</span>
+        </a>
+        {% endif %}
+        
+        <a href="/productos" class="quick-action">
+            <div class="quick-icon">📦</div>
+            <span>Ver Inventario</span>
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+<!-- =========================================== -->
+<!-- ESTILOS ESPECÍFICOS DEL DASHBOARD -->
+<!-- =========================================== -->
+<style>
+.dashboard-header {
+    margin-bottom: 2.5rem;
+}
+
+.dashboard-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* GRID DE ESTADÍSTICAS */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+}
+
+.stat-content h3 {
+    font-size: 2rem;
+    margin: 0;
+    color: var(--text);
+}
+
+.stat-content p {
+    margin: 0.25rem 0 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+/* SECCIONES DEL DASHBOARD */
+.dashboard-section {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* ESTADOS VACÍOS */
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: #f9fafb;
+    border-radius: var(--radius);
+    border: 2px dashed #e5e7eb;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+.empty-state p {
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+}
+
+/* CELDA DE USUARIO */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* ICONO DE MOVIMIENTO */
+.movement-icon {
+    font-size: 1.25rem;
+    display: inline-block;
+}
+
+/* ACCIONES RÁPIDAS */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.quick-action {
+    background: var(--bg);
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.quick-action:hover {
+    background: white;
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+
+.quick-icon {
+    font-size: 2rem;
+}
+
+.quick-action span {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .section-header .btn {
+        align-self: stretch;
+        text-align: center;
+    }
+    
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .dashboard-section {
+        padding: 1.25rem;
+    }
+    
+    .stat-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.25rem;
+    }
+}
+</style>

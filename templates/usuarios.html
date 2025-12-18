@@ -1,0 +1,589 @@
+{% extends "base.html" %}
+{% block title %}👥 Gestión de Usuarios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <div>
+            <h1><i class="fas fa-users"></i> Gestión de Usuarios</h1>
+            <p class="text-muted">Administra los usuarios del sistema de gestión</p>
+        </div>
+        <div class="header-actions">
+            <a href="/usuarios/crear" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> Crear Usuario
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- BÚSQUEDA DE USUARIOS -->
+<!-- =========================================== -->
+<div class="search-container mb-4">
+    <div class="search-box">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" 
+               id="searchInput" 
+               class="search-input" 
+               placeholder="Buscar usuarios por nombre, correo o rol...">
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- ESTADÍSTICAS RÁPIDAS -->
+<!-- =========================================== -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #e0e7ff; color: #6366f1;">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ usuarios|length }}</h3>
+            <p>Total Usuarios</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #d1fae5; color: #10b981;">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ usuarios|selectattr('activo')|list|length }}</h3>
+            <p>Usuarios Activos</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fef3c7; color: #f59e0b;">
+            <i class="fas fa-crown"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ usuarios|selectattr('rol', 'equalto', 'admin')|list|length }}</h3>
+            <p>Administradores</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fce7f3; color: #db2777;">
+            <i class="fas fa-user-cog"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ usuarios|selectattr('rol', 'equalto', 'operador')|list|length }}</h3>
+            <p>Operadores</p>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- TABLA DE USUARIOS MEJORADA -->
+<!-- =========================================== -->
+<div class="table-responsive card">
+    <table class="table" id="usersTable">
+        <thead>
+            <tr>
+                <th width="50">ID</th>
+                <th>Usuario</th>
+                <th width="150">Rol</th>
+                <th width="100">Estado</th>
+                <th width="180">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if usuarios and usuarios|length > 0 %}
+                {% for u in usuarios %}
+                <tr class="user-row {% if not u.activo %}row-inactive{% endif %}">
+                    <!-- ID -->
+                    <td class="text-muted">#{{ u.id }}</td>
+                    
+                    <!-- INFORMACIÓN DEL USUARIO -->
+                    <td>
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                {{ u.nombre[0] if u.nombre else 'U' }}
+                            </div>
+                            <div class="user-details">
+                                <strong>{{ u.nombre }}</strong>
+                                <div class="user-email">{{ u.correo }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- ROL -->
+                    <td>
+                        {% if u.rol == 'admin' %}
+                            <span class="badge badge-admin">
+                                <i class="fas fa-crown"></i> Administrador
+                            </span>
+                        {% else %}
+                            <span class="badge badge-operator">
+                                <i class="fas fa-user-cog"></i> Operador
+                            </span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- ESTADO -->
+                    <td>
+                        {% if u.activo %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-check-circle"></i> Activo
+                            </span>
+                        {% else %}
+                            <span class="badge badge-danger">
+                                <i class="fas fa-times-circle"></i> Inactivo
+                            </span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- ACCIONES -->
+                    <td>
+                        <div class="action-buttons">
+                            <!-- CAMBIAR ESTADO -->
+                            <form method="POST" action="/usuarios/estado/{{ u.id }}" class="d-inline">
+                                <button type="submit" 
+                                        class="btn btn-sm {% if u.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                                        onclick="return confirm('¿{{ 'Desactivar' if u.activo else 'Activar' }} al usuario {{ u.nombre }}?')"
+                                        title="{{ 'Desactivar' if u.activo else 'Activar' }} usuario">
+                                    <i class="fas fa-{{ 'ban' if u.activo else 'check' }}"></i>
+                                    {{ 'Desactivar' if u.activo else 'Activar' }}
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-5">
+                        <div class="empty-state">
+                            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                            <h4>No hay usuarios registrados</h4>
+                            <p class="text-muted">Comienza creando el primer usuario del sistema</p>
+                            <a href="/usuarios/crear" class="btn btn-primary mt-3">
+                                <i class="fas fa-user-plus"></i> Crear Primer Usuario
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- =========================================== -->
+<!-- ESTILOS ESPECÍFICOS -->
+<!-- =========================================== -->
+<style>
+/* HEADER */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-content h1 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.8rem;
+}
+
+.header-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+}
+
+/* BÚSQUEDA */
+.search-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.search-box {
+    position: relative;
+    max-width: 500px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 20px 12px 45px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ESTADÍSTICAS */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-content h3 {
+    font-size: 1.8rem;
+    margin: 0;
+    color: #1f2937;
+}
+
+.stat-content p {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+/* TABLA */
+.table-responsive {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table {
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.table thead th {
+    padding: 16px;
+    font-weight: 600;
+    border: none;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.table tbody td {
+    padding: 16px;
+    vertical-align: middle;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* FILAS INACTIVAS */
+.row-inactive {
+    opacity: 0.7;
+    background-color: #f9fafb;
+}
+
+.row-inactive:hover {
+    opacity: 1;
+}
+
+/* INFO DEL USUARIO */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.user-details {
+    flex: 1;
+}
+
+.user-details strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.user-email {
+    color: #6b7280;
+    font-size: 0.85rem;
+    word-break: break-all;
+}
+
+/* BADGES */
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.badge-admin {
+    background: #6366f1;
+    color: white;
+}
+
+.badge-operator {
+    background: #10b981;
+    color: white;
+}
+
+.badge-success {
+    background: #10b981;
+    color: white;
+}
+
+.badge-danger {
+    background: #ef4444;
+    color: white;
+}
+
+/* BOTONES DE ACCIÓN */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-buttons .btn-sm {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ESTADO VACÍO */
+.empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.empty-state i {
+    opacity: 0.3;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .table {
+        font-size: 0.9rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .action-buttons .btn-sm {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* TABLA RESPONSIVE */
+    .table thead {
+        display: none;
+    }
+    
+    .table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .table tbody td {
+        display: block;
+        padding: 0.5rem 0;
+        border: none;
+        text-align: left;
+        position: relative;
+        padding-left: 40%;
+    }
+    
+    .table tbody td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        width: 35%;
+        padding-right: 1rem;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .user-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+}
+</style>
+
+<!-- =========================================== -->
+<!-- SCRIPTS DE FUNCIONALIDAD -->
+<!-- =========================================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // FILTRADO POR BÚSQUEDA
+    const searchInput = document.getElementById('searchInput');
+    const tableRows = document.querySelectorAll('#usersTable tbody .user-row');
+    
+    function filterUsers() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        tableRows.forEach(row => {
+            const userName = row.querySelector('.user-details strong').textContent.toLowerCase();
+            const userEmail = row.querySelector('.user-email').textContent.toLowerCase();
+            const userRole = row.querySelector('.badge').textContent.toLowerCase();
+            
+            const matches = userName.includes(searchTerm) || 
+                           userEmail.includes(searchTerm) || 
+                           userRole.includes(searchTerm);
+            
+            row.style.display = matches ? '' : 'none';
+        });
+    }
+    
+    // Filtrar mientras se escribe
+    searchInput.addEventListener('input', filterUsers);
+    
+    // Añadir data-labels para responsive
+    if (window.innerWidth <= 768) {
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 5) {
+                cells[0].setAttribute('data-label', 'ID');
+                cells[1].setAttribute('data-label', 'Usuario');
+                cells[2].setAttribute('data-label', 'Rol');
+                cells[3].setAttribute('data-label', 'Estado');
+                cells[4].setAttribute('data-label', 'Acciones');
+            }
+        });
+    }
+    
+    // CONFIRMACIÓN PARA CAMBIOS DE ESTADO
+    document.querySelectorAll('form[action*="/usuarios/estado/"]').forEach(form => {
+        const button = form.querySelector('button[type="submit"]');
+        const originalOnClick = button.getAttribute('onclick');
+        
+        // Reemplazar la confirmación nativa por una mejor
+        button.removeAttribute('onclick');
+        
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const actionText = this.innerHTML.includes('Desactivar') ? 'desactivar' : 'activar';
+            const userName = this.closest('tr').querySelector('.user-details strong').textContent;
+            
+            if (confirm(`¿Estás seguro de ${actionText} al usuario "${userName}"?\n\nEl usuario ${actionText === 'desactivar' ? 'no podrá acceder al sistema' : 'podrá volver a acceder al sistema'}.`)) {
+                form.submit();
+            }
+        });
+    });
+    
+    // ANIMACIÓN DE HOVER EN LAS TARJETAS DE ESTADÍSTICAS
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-5px)';
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}
